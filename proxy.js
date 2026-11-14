@@ -4,6 +4,29 @@ import { edgeAuthConfig } from '@/lib/auth/edge.config'
 
 const { auth: proxyAuth } = NextAuth(edgeAuthConfig)
 
+function getPublicOrigin(request) {
+  // If deployed on Vercel or behind a reverse proxy, extract the real forwarded host & proto
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'
+  if (forwardedHost && !forwardedHost.includes('localhost')) {
+    return `${forwardedProto}://${forwardedHost}`
+  }
+
+  const host = request.headers.get('host')
+  if (host && !host.includes('localhost')) {
+    return `https://${host}`
+  }
+
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+
+  return request.nextUrl.origin
+}
+
 export const proxy = proxyAuth((request) => {
   const { pathname } = request.nextUrl
   const session = request.auth
@@ -21,13 +44,15 @@ export const proxy = proxyAuth((request) => {
   }
 
   if (isDashboardProtected && !isAuthenticated) {
-    const url = new URL('/login', request.url)
+    const origin = getPublicOrigin(request)
+    const url = new URL('/login', origin)
     url.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(url)
   }
 
   if (isAuthPage && isAuthenticated) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    const origin = getPublicOrigin(request)
+    return NextResponse.redirect(new URL('/dashboard', origin))
   }
 
   return NextResponse.next()
