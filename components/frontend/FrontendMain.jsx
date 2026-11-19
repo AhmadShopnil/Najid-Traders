@@ -30,8 +30,9 @@ import { getInitials } from '@/lib/utils'
 
 function getCategoryIcon(slug = '', name = '') {
   const s = `${slug} ${name}`.toLowerCase()
+  if (s.includes('shawl') || s.includes('pashmina') || s.includes('chadar') || s.includes('kashmiri')) return Sparkles
   if (s.includes('three-piece') || s.includes('dress') || s.includes('cloth') || s.includes('apparel')) return Shirt
-  if (s.includes('saree') || s.includes('silk') || s.includes('jamdani')) return Sparkles
+  if (s.includes('saree') || s.includes('silk') || s.includes('jamdani')) return Layers
   if (s.includes('spice') || s.includes('masala') || s.includes('moshola') || s.includes('agro')) return Flame
   if (s.includes('china') || s.includes('mug') || s.includes('cup') || s.includes('gadget') || s.includes('bottle')) return CupSoda
   return Layers
@@ -85,6 +86,9 @@ function countProductsForTerm(term, products = []) {
 
     // 4. Keyword matching fallback
     const title = String(p.title || data.title || '').toLowerCase()
+    if (termSlug.includes('shawl') || termSlug.includes('pashmina')) {
+      if (title.includes('shawl') || title.includes('pashmina') || title.includes('kashmiri') || title.includes('chadar')) return true
+    }
     if (termSlug.includes('china') && (title.includes('mug') || title.includes('cup') || title.includes('chopper') || title.includes('diffuser') || title.includes('flask') || title.includes('bottle') || title.includes('china'))) {
       return true
     }
@@ -301,7 +305,7 @@ export function FrontendMain({
 
                   <div className="space-y-2.5">
                     {divisions.length > 0 ? (
-                      divisions.slice(0, 4).map((div) => {
+                      divisions.slice(0, 5).map((div) => {
                         const Icon = div.icon
                         return (
                           <Link
@@ -462,7 +466,7 @@ export function FrontendMain({
             </div>
 
             {divisions.length > 0 && (
-              <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {divisions.map((div) => {
                   const Icon = div.icon
                   return (
