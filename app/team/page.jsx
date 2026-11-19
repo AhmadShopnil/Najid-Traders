@@ -16,7 +16,7 @@ import { FrontendHeader } from '@/components/frontend/layout/FrontendHeader'
 import { FrontendFooter } from '@/components/frontend/layout/FrontendFooter'
 import { TeamDirectoryClient } from '@/components/frontend/team/TeamDirectoryClient'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export async function generateMetadata() {
   const settings = await getPublicSiteSettings()

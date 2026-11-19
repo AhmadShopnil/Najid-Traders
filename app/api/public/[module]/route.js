@@ -199,22 +199,29 @@ export async function GET(request, { params }) {
       }
     })
 
-    return Response.json({
-      success: true,
-      message: 'Success',
-      data: formattedItems,
-      pagination: buildPagination(total, page, limit),
-      meta: {
-        module: {
-          id: String(mod._id),
-          name: mod.name,
-          slug: mod.slug,
-          icon: mod.icon || '📰',
-          fields: mod.fields || [],
+    return Response.json(
+      {
+        success: true,
+        message: 'Success',
+        data: formattedItems,
+        pagination: buildPagination(total, page, limit),
+        meta: {
+          module: {
+            id: String(mod._id),
+            name: mod.name,
+            slug: mod.slug,
+            icon: mod.icon || '📰',
+            fields: mod.fields || [],
+          },
+          taxonomies: publicTaxonomies,
         },
-        taxonomies: publicTaxonomies,
       },
-    })
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+        },
+      }
+    )
   } catch (err) {
     return errorResponse(err.message)
   }

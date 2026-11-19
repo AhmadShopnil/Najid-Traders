@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Search, Package, ArrowRight, Info, SlidersHorizontal } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Search, Package, ArrowRight, Info, SlidersHorizontal, Image as ImageIcon } from 'lucide-react'
 import { FrontendHeader } from '@/components/frontend/layout/FrontendHeader'
 import { FrontendFooter } from '@/components/frontend/layout/FrontendFooter'
 import { extractProductSummary } from '@/lib/product-helpers'
@@ -13,10 +14,18 @@ export function ProductsCatalog({
   settings = {},
   initialCategory = 'all',
 }) {
+  const searchParams = useSearchParams()
+  const urlCategory = searchParams?.get('category') || null
   const theme = settings.theme || {}
   const secondaryColor = theme.secondaryColor || '#16385D'
   const [search, setSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'all')
+  const [selectedCategory, setSelectedCategory] = useState(urlCategory || initialCategory || 'all')
+
+  useEffect(() => {
+    if (urlCategory) {
+      setSelectedCategory(urlCategory)
+    }
+  }, [urlCategory])
 
   const categoryOptions = useMemo(() => {
     const seen = new Map()
@@ -142,7 +151,7 @@ export function ProductsCatalog({
           </div>
 
           {filtered.length > 0 ? (
-            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {filtered.map((product) => (
                 <Link
                   key={product.id}
@@ -164,6 +173,12 @@ export function ProductsCatalog({
                     {product.categories[0] && (
                       <span className="absolute top-3 left-3 rounded bg-slate-900/90 px-2.5 py-1 text-[11px] font-semibold text-white">
                         {product.categories[0]}
+                      </span>
+                    )}
+                    {product.images?.length > 1 && (
+                      <span className="absolute bottom-3 right-3 rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-xs flex items-center gap-1 shadow-xs">
+                        <ImageIcon className="w-3 h-3 text-amber-300" />
+                        {product.images.length} Photos
                       </span>
                     )}
                   </div>

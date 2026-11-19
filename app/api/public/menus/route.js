@@ -3,7 +3,7 @@ import { Menu } from '@/lib/db/models/Menu'
 import { successResponse, errorResponse } from '@/lib/api-response'
 import { ensureDefaultMenus } from '@/lib/menus/defaults'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export async function GET(request) {
   try {
@@ -30,7 +30,9 @@ export async function GET(request) {
         .sort((a, b) => (a.order || 0) - (b.order || 0)),
     }))
 
-    return successResponse(sanitized)
+    return successResponse(sanitized, 'Success', 200, {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+    })
   } catch (err) {
     return errorResponse(err.message)
   }

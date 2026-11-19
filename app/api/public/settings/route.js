@@ -2,6 +2,8 @@ import { connectDB } from '@/lib/db/mongoose'
 import { SettingGroup } from '@/lib/db/models/SettingGroup'
 import { successResponse, errorResponse } from '@/lib/api-response'
 
+export const revalidate = 60
+
 export async function GET() {
   try {
     await connectDB()
@@ -19,7 +21,9 @@ export async function GET() {
       settingsObject[group.slug] = groupData
     })
 
-    return successResponse(settingsObject)
+    return successResponse(settingsObject, 'Success', 200, {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+    })
   } catch (err) {
     return errorResponse(err.message)
   }

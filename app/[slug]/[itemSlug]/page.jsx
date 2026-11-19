@@ -1,13 +1,12 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Sparkles, Edit3 } from 'lucide-react'
 import { getPublicSingleItemData } from '@/lib/public-data'
-import { getServerSession } from '@/lib/auth/helpers'
 import { FrontendHeader } from '@/components/frontend/layout/FrontendHeader'
 import { FrontendFooter } from '@/components/frontend/layout/FrontendFooter'
 import { LivePageRenderer } from '@/components/builder/LivePageRenderer'
+import { AdminFloatingBar } from '@/components/frontend/AdminFloatingBar'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
+export const dynamicParams = true
 
 const RESERVED_SLUGS = ['dashboard', 'api', 'login', 'admin', '_next', 'favicon.ico', 'pages']
 
@@ -47,15 +46,9 @@ export default async function SingleModuleContentPage({ params }) {
   }
 
   let data = null
-  let session = null
 
   try {
-    const [loadedSession, loadedItem] = await Promise.all([
-      getServerSession().catch(() => null),
-      getPublicSingleItemData(slug, itemSlug),
-    ])
-    session = loadedSession
-    data = loadedItem
+    data = await getPublicSingleItemData(slug, itemSlug)
   } catch (err) {
     console.error('Error rendering single module item page:', err)
     notFound()
@@ -152,34 +145,19 @@ export default async function SingleModuleContentPage({ params }) {
         />
       </main>
 
-      {/* Floating Admin Customization Bar so logged-in user can edit this automatic/custom single page anytime */}
-      {session?.user && (
-        <div className="print:hidden fixed bottom-5 right-5 z-50 flex flex-wrap items-center gap-2 bg-slate-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-white/15 text-xs">
-          <div className="flex items-center gap-2 pr-2 border-r border-white/15">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-slate-200">
-              {customTemplate ? `Custom Template: ${customTemplate.title}` : `Auto ${module.name} Detail Page`}
-            </span>
-            <span className="font-mono text-[11px] text-purple-300 bg-white/10 px-2 py-0.5 rounded-md">
-              /{module.slug}/{contentItem.slug}
-            </span>
-          </div>
-          <Link
-            href={editTemplateUrl}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition shadow-xs"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Edit Single Page Design</span>
-          </Link>
-          <Link
-            href={`/dashboard/content/${module.slug}/${contentItem._id}`}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 font-semibold rounded-xl transition"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>Edit Content</span>
-          </Link>
-        </div>
-      )}
+      {/* Floating Admin Customization Bar for logged-in admins */}
+      <AdminFloatingBar
+        badgeText={customTemplate ? `Custom Template: ${customTemplate.title}` : `Auto ${module.name} Detail Page`}
+        permalink={`/${module.slug}/${contentItem.slug}`}
+        primaryAction={{
+          label: 'Edit Single Page Design',
+          href: editTemplateUrl,
+        }}
+        secondaryAction={{
+          label: 'Edit Content',
+          href: `/dashboard/content/${module.slug}/${contentItem._id}`,
+        }}
+      />
 
       <FrontendFooter settings={settings} />
     </div>

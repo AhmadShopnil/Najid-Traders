@@ -78,7 +78,7 @@ Fetch a published visual page layout constructed with the **Elementor Visual Pag
 Fetch all active Dynamic Modules where `settings.allowPublicRead !== false`, along with their schema `fields`, `publishedCount`, and `taxonomies` (including all category/tag `terms` with `id, name, slug, color`). Used by the Visual Page Builder and frontend consumers to populate live module and category selectors.
 
 ### `GET /api/public/[module_slug]`
-Fetch a paginated list of published content for a specific module (e.g., `/api/public/news`, `/api/public/blogs`). Automatically resolves assigned categories/terms into `resolvedCategories` on every item, derives a normalized `slug` fallback if missing (without mutating the database on GET), and returns module metadata (`meta.module` and `meta.taxonomies`).
+Fetch a paginated list of published content for a specific module (e.g., `/api/public/news`, `/api/public/blogs`). Automatically resolves assigned categories/terms into `resolvedCategories` on every item, derives a normalized `slug` fallback if missing (without mutating the database on GET), returns module metadata (`meta.module` and `meta.taxonomies`), and sets Edge CDN caching headers (`Cache-Control: public, s-maxage=30, stale-while-revalidate=120`).
 
 - **Query Parameters**:
   - `page` (Number) - Default: `1` (minimum `1`)
@@ -174,9 +174,9 @@ Admin endpoints require NextAuth session authentication and permission checks. U
 
 ### Content Management
 - `GET /api/admin/contents?moduleId=[id]` - Get paginated content for a specific module (`page`, `limit`, `status`, `q`, `termId`). Requires `content:read`.
-- `POST /api/admin/contents` - Create new content entry. Dynamically validates fields against module schema (required non-empty check, number coercion, relation arrays), rejects inactive modules (`isActive: false`) with `403`, and generates a unique `data.slug` in a single collision check. Requires `content:create` (and `content:publish` if created directly as `published`).
+- `POST /api/admin/contents` - Create new content entry. Dynamically validates fields against module schema (required non-empty check, number coercion, relation arrays, image & multi-image gallery arrays), rejects inactive modules (`isActive: false`) with `403`, and generates a unique `data.slug` in a single collision check. Requires `content:create` (and `content:publish` if created directly as `published`).
 - `GET /api/admin/contents/[id]` - Get single content by ID. Requires `content:read`.
-- `PUT /api/admin/contents/[id]` - Update single content, rejecting inactive modules (`403`), preserving existing `seo` fields on partial updates, keeping `publishedAt` synchronized with status, and ensuring unique `data.slug`. Requires `content:update` (and `content:publish` if transitioning status to/from `published`).
+- `PUT /api/admin/contents/[id]` - Update single content, rejecting inactive modules (`403`), preserving existing `seo` fields on partial updates, keeping `publishedAt` synchronized with status, supporting single cover images and multi-image galleries, and ensuring unique `data.slug`. Requires `content:update` (and `content:publish` if transitioning status to/from `published`).
 - `DELETE /api/admin/contents/[id]` - Delete content. Requires `content:delete`.
 - `PATCH /api/admin/contents/[id]/status` - Update publishing status (`draft` | `published` | `archived`), syncing `publishedAt` accordingly. Requires `content:publish`.
 
@@ -240,7 +240,7 @@ Dynamic modules support multiple configurable taxonomies (e.g., Categories, Tags
 ### System & Settings
 - `GET /api/admin/stats` - Returns dashboard statistics (`totalUsers` and `recentActivities` automatically exclude Super Admin accounts/activities for non-Super-Admin callers).
 - `POST /api/seed` - Development-only initializer (`403` in production) to seed default roles and super admin user.
-- `GET /api/public/settings` - Fetches global dynamic settings grouped by group slug into clean JSON (`{ general: { site_name, site_tagline, site_logo, brand_display, favicon, footer_text }, footer: { footer_col1_title, footer_col2_title, footer_col3_title, footer_copyright, footer_subtext, topbar_text, topbar_show_phone, topbar_show_hours }, theme: { theme_primary_color, theme_secondary_color, theme_accent_color, theme_button_bg, theme_button_text, theme_topbar_bg, theme_footer_bg }, dashboard: { dashboard_name, dashboard_logo, login_subtitle, dashboard_sidebar_bg, dashboard_primary_color, dashboard_accent_color }, contact: { contact_email, contact_phone, contact_address, support_hours }, seo: { meta_title, meta_description, og_image, facebook_url, twitter_url, instagram_url, linkedin_url, youtube_url }, media: { max_upload_size_mb, default_image_quality }, ... }`).
+- `GET /api/public/settings` - Fetches global dynamic settings grouped by group slug into clean JSON with Edge CDN caching headers (`Cache-Control: public, s-maxage=60, stale-while-revalidate=300`) (`{ general: { site_name, site_tagline, site_logo, brand_display, favicon, footer_text }, footer: { footer_col1_title, footer_col2_title, footer_col3_title, footer_copyright, footer_subtext, topbar_text, topbar_show_phone, topbar_show_hours }, theme: { theme_primary_color, theme_secondary_color, theme_accent_color, theme_button_bg, theme_button_text, theme_topbar_bg, theme_footer_bg }, dashboard: { dashboard_name, dashboard_logo, login_subtitle, dashboard_sidebar_bg, dashboard_primary_color, dashboard_accent_color }, contact: { contact_email, contact_phone, contact_address, support_hours }, seo: { meta_title, meta_description, og_image, facebook_url, twitter_url, instagram_url, linkedin_url, youtube_url }, media: { max_upload_size_mb, default_image_quality }, ... }`).
 - `GET /api/admin/settings` - List dynamic setting groups accessible to the current user's role (`allowedRoles` empty or matching `roleSlug`, or all for `super_admin`), non-destructively ensuring all system groups and their default fields exist without overwriting saved values. Requires `settings:read` or `settings:update`.
 - `POST /api/admin/settings` - Create a new custom setting group (optionally with `allowedRoles`). Requires `settings:create_group`.
 - `PUT /api/admin/settings/[id]` - Update setting group values (requires `settings:update` + group access). Modifying field schemas, group metadata, or `allowedRoles` additionally requires `settings:manage_schema`.
@@ -293,7 +293,7 @@ The CMS includes built-in developer quick-visit and inspection badges for all co
 - `DELETE /api/admin/employees/[id]` - Permanently delete an employee by ID. Logs an activity entry. Requires `employees:delete`.
 
 ### Public Endpoint
-- `GET /api/public/employees` - Returns all active (`isActive: true`) employees sorted by `{ isFeatured: -1, sortOrder: 1, createdAt: 1 }` (featured executive leadership first, followed by sort order and creation date) for the public `/team` page and homepage team preview.
+- `GET /api/public/employees` - Returns all active (`isActive: true`) employees sorted by `{ isFeatured: -1, sortOrder: 1, createdAt: 1 }` (featured executive leadership first, followed by sort order and creation date) for the public `/team` page and homepage team preview. Includes Edge CDN caching headers (`Cache-Control: public, s-maxage=60, stale-while-revalidate=300`).
 
 
 ---
@@ -316,8 +316,8 @@ The CMS includes built-in developer quick-visit and inspection badges for all co
 Dynamic multi-location navigation system managing menu links across the public site (Main Header, Top Bar, Footer Columns, and custom slots).
 
 ### Public Endpoints (Read-Only)
-- `GET /api/public/menus` - Returns all active navigation menus (`isActive: true`) with only active items, ordered sequentially. Supports optional `?location=main_header|top_bar|footer_col1|footer_col2|footer_col3` query filter.
-- `GET /api/public/menus/[slug]` - Returns a single active navigation menu by its unique `slug` or assigned `location`.
+- `GET /api/public/menus` - Returns all active navigation menus (`isActive: true`) with only active items, ordered sequentially. Supports optional `?location=main_header|top_bar|footer_col1|footer_col2|footer_col3` query filter. Includes Edge CDN caching headers (`Cache-Control: public, s-maxage=60, stale-while-revalidate=300`).
+- `GET /api/public/menus/[slug]` - Returns a single active navigation menu by its unique `slug` or assigned `location`. Includes Edge CDN caching headers (`Cache-Control: public, s-maxage=60, stale-while-revalidate=300`).
 
 ### Admin Endpoints (Auth & RBAC Required)
 - `GET /api/admin/menus` - List all configured menus along with their item arrays and assigned display locations (`main_header`, `top_bar`, `footer_col1`, `footer_col2`, `footer_col3`, `custom`). Automatically seeds default system menus if empty. Requires `pages:read`, `settings:read`, or `settings:update`.

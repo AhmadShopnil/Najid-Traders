@@ -19,6 +19,8 @@ import {
   Layers,
   ChevronRight,
   Star,
+  Image as ImageIcon,
+  Sparkles,
 } from 'lucide-react'
 import { FrontendHeader } from '@/components/frontend/layout/FrontendHeader'
 import { FrontendFooter } from '@/components/frontend/layout/FrontendFooter'
@@ -26,70 +28,142 @@ import { InquiryForm } from '@/components/frontend/InquiryForm'
 import { extractProductSummary } from '@/lib/product-helpers'
 import { getInitials } from '@/lib/utils'
 
-const DIVISION_ICONS = [Shirt, Flame, CupSoda, Layers]
+function getCategoryIcon(slug = '', name = '') {
+  const s = `${slug} ${name}`.toLowerCase()
+  if (s.includes('three-piece') || s.includes('dress') || s.includes('cloth') || s.includes('apparel')) return Shirt
+  if (s.includes('saree') || s.includes('silk') || s.includes('jamdani')) return Sparkles
+  if (s.includes('spice') || s.includes('masala') || s.includes('moshola') || s.includes('agro')) return Flame
+  if (s.includes('china') || s.includes('mug') || s.includes('cup') || s.includes('gadget') || s.includes('bottle')) return CupSoda
+  return Layers
+}
+
+function countProductsForTerm(term, products = []) {
+  const termSlug = String(term.slug || '').toLowerCase()
+  const termName = String(term.name || '').toLowerCase()
+  const termId = String(term._id || term.id || '')
+
+  return products.filter((p) => {
+    // 1. Resolved categories
+    const resolved = Array.isArray(p.resolvedCategories) ? p.resolvedCategories : []
+    if (
+      resolved.some(
+        (c) =>
+          String(c.slug || '').toLowerCase() === termSlug ||
+          String(c.name || '').toLowerCase() === termName ||
+          (termId && String(c._id || c.id) === termId)
+      )
+    ) {
+      return true
+    }
+
+    // 2. Direct taxonomy map in content doc
+    const taxObj = p.taxonomies || {}
+    for (const val of Object.values(taxObj)) {
+      if (Array.isArray(val)) {
+        if (
+          val.some(
+            (v) =>
+              String(v).toLowerCase() === termSlug ||
+              (termId && String(v) === termId)
+          )
+        ) {
+          return true
+        }
+      } else if (typeof val === 'string') {
+        if (val.toLowerCase() === termSlug || (termId && val === termId)) {
+          return true
+        }
+      }
+    }
+
+    // 3. Raw data matching
+    const data = p.data || p
+    const catVal = String(data.category || data.categorySlug || '').toLowerCase()
+    if (catVal && (catVal === termSlug || catVal.includes(termSlug))) {
+      return true
+    }
+
+    // 4. Keyword matching fallback
+    const title = String(p.title || data.title || '').toLowerCase()
+    if (termSlug.includes('china') && (title.includes('mug') || title.includes('cup') || title.includes('chopper') || title.includes('diffuser') || title.includes('flask') || title.includes('bottle') || title.includes('china'))) {
+      return true
+    }
+    if (termSlug.includes('saree') && (title.includes('saree') || title.includes('jamdani') || title.includes('katan'))) {
+      return true
+    }
+    if (termSlug.includes('three-piece') && (title.includes('three piece') || title.includes('three-piece') || title.includes('organza') || title.includes('cotton printed'))) {
+      return true
+    }
+    if (termSlug.includes('spice') && (title.includes('cardamom') || title.includes('pepper') || title.includes('cumin') || title.includes('jeera') || title.includes('elachi') || title.includes('spice'))) {
+      return true
+    }
+
+    return false
+  })
+}
 
 function buildDynamicDivisions(taxonomies = [], products = []) {
   if (!Array.isArray(taxonomies) || taxonomies.length === 0) return []
 
+  // Collect all category terms across all taxonomy systems
+  const allTerms = []
+  for (const tax of taxonomies) {
+    if (Array.isArray(tax.terms) && tax.terms.length > 0) {
+      for (const term of tax.terms) {
+        allTerms.push({
+          ...term,
+          taxonomySlug: tax.slug,
+          taxonomyName: tax.name,
+        })
+      }
+    }
+  }
+
+  // If terms exist, display each individual category item as a card
+  if (allTerms.length > 0) {
+    return allTerms.map((term, idx) => {
+      const matchedProducts = countProductsForTerm(term, products)
+      const count = matchedProducts.length
+      const Icon = getCategoryIcon(term.slug, term.name)
+
+      // Extract up to 3 concise product highlights
+      const highlights = matchedProducts
+        .slice(0, 3)
+        .map((p) => {
+          const t = String(p.title || p.data?.title || '')
+          return t.length > 34 ? `${t.slice(0, 32)}...` : t
+        })
+        .filter(Boolean)
+
+      return {
+        id: String(term._id || term.id || term.slug || idx),
+        title: term.name,
+        slug: term.slug,
+        badge: `${count} ${count === 1 ? 'Item' : 'Items'}`,
+        description:
+          term.description?.trim() ||
+          `Wholesale and direct factory supply for authentic ${term.name}.`,
+        highlights:
+          highlights.length > 0
+            ? highlights
+            : [`Authentic wholesale ${term.name}`, 'Direct factory sourcing', 'Bulk supply available'],
+        href: `/products?category=${encodeURIComponent(term.slug)}`,
+        icon: Icon,
+      }
+    })
+  }
+
+  // Fallback if no terms configured yet
   return taxonomies.map((tax, idx) => {
-    const terms = Array.isArray(tax.terms) ? tax.terms : []
-    const termIds = new Set(terms.map((t) => String(t._id || t.id)))
-    const termSlugs = new Set(terms.map((t) => String(t.slug || '').toLowerCase()))
-    const termNames = new Set(terms.map((t) => String(t.name || '').toLowerCase()))
-
-    const productCount = products.filter((p) => {
-      // 1. Direct taxonomy match
-      const assigned = p.taxonomies?.[tax.slug] || p.taxonomies?.[String(tax._id)] || []
-      if (Array.isArray(assigned) && assigned.some((id) => termIds.has(String(id)))) {
-        return true
-      }
-
-      // 2. Resolved categories match
-      const resolved = Array.isArray(p.resolvedCategories) ? p.resolvedCategories : []
-      if (
-        resolved.some(
-          (c) =>
-            termIds.has(String(c._id || c.id)) ||
-            termSlugs.has(String(c.slug || '').toLowerCase()) ||
-            termNames.has(String(c.name || '').toLowerCase())
-        )
-      ) {
-        return true
-      }
-
-      // 3. Fallback title/category keyword matching
-      const title = String(p.title || p.name || '').toLowerCase()
-      if (tax.slug === 'china-products' && (title.includes('pot') || title.includes('pitcher') || title.includes('flask') || title.includes('china'))) {
-        return true
-      }
-      if (tax.slug === 'dress' && (title.includes('three-piece') || title.includes('saree') || title.includes('lawn') || title.includes('silk') || title.includes('dress'))) {
-        return true
-      }
-      if (tax.slug === 'moshola' && (title.includes('spice') || title.includes('masala') || title.includes('chili') || title.includes('turmeric') || title.includes('elaichi'))) {
-        return true
-      }
-
-      return false
-    }).length
-
-    const Icon = DIVISION_ICONS[idx % DIVISION_ICONS.length]
-    const firstTermSlug = terms[0]?.slug
-
     return {
       id: String(tax._id || tax.slug),
       title: tax.name,
       slug: tax.slug,
-      badge: `${productCount} ${productCount === 1 ? 'Item' : 'Items'}`,
-      description:
-        tax.description?.trim() ||
-        (terms.length > 0
-          ? `Includes ${terms.map((t) => t.name).join(', ')} sourced directly for wholesale trade.`
-          : `Imported ${tax.name} collection available for wholesale inquiry.`),
-      highlights: terms.map((t) => t.name),
-      href: firstTermSlug
-        ? `/products?category=${encodeURIComponent(firstTermSlug)}`
-        : '/products',
-      icon: Icon,
+      badge: `${products.length} Items`,
+      description: tax.description?.trim() || `Explore our ${tax.name} catalog.`,
+      highlights: [],
+      href: '/products',
+      icon: Layers,
     }
   })
 }
@@ -131,7 +205,7 @@ export function FrontendMain({
     { label: 'YouTube', href: social.youtube },
   ].filter((item) => Boolean(item.href))
   const divisions = buildDynamicDivisions(taxonomies, products)
-  const featuredProducts = products.slice(0, 6).map(extractProductSummary)
+  const featuredProducts = products.slice(0, 8).map(extractProductSummary)
   const previewEmployees = employees.slice(0, 4)
 
   return (
@@ -295,7 +369,7 @@ export function FrontendMain({
             </div>
 
             {featuredProducts.length > 0 ? (
-              <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {featuredProducts.map((product) => (
                   <Link
                     key={product.id}
@@ -317,6 +391,12 @@ export function FrontendMain({
                       {product.categories[0] && (
                         <span className="absolute top-3 left-3 rounded bg-slate-900/90 px-2.5 py-1 text-[11px] font-semibold text-white">
                           {product.categories[0]}
+                        </span>
+                      )}
+                      {product.images?.length > 1 && (
+                        <span className="absolute bottom-3 right-3 rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-xs flex items-center gap-1 shadow-xs">
+                          <ImageIcon className="w-3 h-3 text-amber-300" />
+                          {product.images.length} Photos
                         </span>
                       )}
                     </div>
@@ -382,7 +462,7 @@ export function FrontendMain({
             </div>
 
             {divisions.length > 0 && (
-              <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 {divisions.map((div) => {
                   const Icon = div.icon
                   return (

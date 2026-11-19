@@ -16,8 +16,21 @@ import { FrontendHeader } from '@/components/frontend/layout/FrontendHeader'
 import { FrontendFooter } from '@/components/frontend/layout/FrontendFooter'
 import { InquiryForm } from '@/components/frontend/InquiryForm'
 import { extractProductSummary } from '@/lib/product-helpers'
+import { ProductGallery } from '@/components/frontend/products/ProductGallery'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
+export const dynamicParams = true
+
+export async function generateStaticParams() {
+  try {
+    const { items } = await getPublicProductsPageData()
+    return (items || [])
+      .map((item) => ({ itemSlug: String(item.slug || '') }))
+      .filter((p) => Boolean(p.itemSlug))
+  } catch {
+    return []
+  }
+}
 
 const SKIP_SPEC_KEYS = new Set([
   'title',
@@ -31,6 +44,8 @@ const SKIP_SPEC_KEYS = new Set([
   'photo',
   'cover',
   'gallery',
+  'images',
+  'additional_images',
   'description',
   'details',
   'short_description',
@@ -144,21 +159,12 @@ export default async function ProductDetailPage({ params }) {
 
           {/* Product Main Card */}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 rounded-lg border border-slate-200 bg-white p-6 sm:p-8">
-            {/* Image */}
+            {/* Image Gallery */}
             <div className="lg:col-span-6">
-              <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-100 aspect-[4/3]">
-                {product.image ? (
-                  <img
-                    src={product.image}
-                    alt={product.title}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-slate-300">
-                    <Package className="h-16 w-16" />
-                  </div>
-                )}
-              </div>
+              <ProductGallery
+                images={product.images || (product.image ? [product.image] : [])}
+                title={product.title}
+              />
             </div>
 
             {/* Info & Inquiry */}

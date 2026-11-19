@@ -1,7 +1,8 @@
+import { Suspense } from 'react'
 import { getPublicProductsPageData } from '@/lib/public-data'
 import { ProductsCatalog } from '@/components/frontend/products/ProductsCatalog'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export async function generateMetadata() {
   const { settings } = await getPublicProductsPageData()
@@ -12,17 +13,16 @@ export async function generateMetadata() {
   }
 }
 
-export default async function ProductsPage({ searchParams }) {
-  const resolvedParams = await searchParams
-  const initialCategory = resolvedParams?.category || 'all'
+export default async function ProductsPage() {
   const { items, taxonomies, settings } = await getPublicProductsPageData()
 
   return (
-    <ProductsCatalog
-      items={items}
-      taxonomies={taxonomies}
-      settings={settings}
-      initialCategory={initialCategory}
-    />
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 animate-pulse" />}>
+      <ProductsCatalog
+        items={items}
+        taxonomies={taxonomies}
+        settings={settings}
+      />
+    </Suspense>
   )
 }
