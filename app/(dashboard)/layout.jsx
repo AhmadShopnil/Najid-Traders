@@ -1,13 +1,27 @@
 import { redirect } from 'next/navigation'
 import { getServerSession } from '@/lib/auth/helpers'
 import { getDashboardBranding } from '@/lib/settings/defaults'
+import { getPublicSiteSettings } from '@/lib/public-data'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ServerSessionProvider } from '@/components/providers/SessionProvider'
 
 export async function generateMetadata() {
-  const branding = await getDashboardBranding()
+  const [branding, settings] = await Promise.all([
+    getDashboardBranding(),
+    getPublicSiteSettings(),
+  ])
+  const favicon = settings?.favicon
   return {
     title: `${branding.name || 'CMS'} - Dashboard`,
+    ...(favicon
+      ? {
+          icons: {
+            icon: [{ url: favicon }, { url: '/favicon.ico' }],
+            shortcut: [favicon],
+            apple: [{ url: favicon }],
+          },
+        }
+      : {}),
   }
 }
 

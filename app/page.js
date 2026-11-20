@@ -6,11 +6,21 @@ export const revalidate = 60
 export async function generateMetadata() {
   const { settings } = await getPublicProductsPageData()
   const siteName = settings?.siteName || 'Najid Traders'
+  const favicon = settings?.favicon
   return {
     title: `${siteName} — Importer & Wholesale Supplier`,
     description:
       settings?.seo?.metaDescription ||
       'Najid Traders imports Three-Piece, Sarees, authentic Spices, and China household products including water pots. Browse product details and contact us for wholesale inquiries.',
+    ...(favicon
+      ? {
+          icons: {
+            icon: [{ url: favicon }, { url: '/favicon.ico' }],
+            shortcut: [favicon],
+            apple: [{ url: favicon }],
+          },
+        }
+      : {}),
   }
 }
 

@@ -17,9 +17,19 @@ export const revalidate = 60
 export async function generateMetadata() {
   const settings = await getPublicSiteSettings()
   const siteName = settings?.siteName || 'Najid Traders'
+  const favicon = settings?.favicon
   return {
     title: `Corporate Leadership — ${siteName}`,
     description: `Meet the governing leadership behind ${siteName}. Direct factory wholesale sourcing and nationwide distribution.`,
+    ...(favicon
+      ? {
+          icons: {
+            icon: [{ url: favicon }, { url: '/favicon.ico' }],
+            shortcut: [favicon],
+            apple: [{ url: favicon }],
+          },
+        }
+      : {}),
   }
 }
 

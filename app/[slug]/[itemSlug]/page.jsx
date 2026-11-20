@@ -17,7 +17,7 @@ export async function generateMetadata({ params }) {
   try {
     const res = await getPublicSingleItemData(slug, itemSlug)
     if (!res?.contentItem) return { title: 'Content Not Found' }
-    const { contentItem, module } = res
+    const { contentItem, module, settings } = res
     const title =
       contentItem.seo?.title ||
       contentItem.data?.title ||
@@ -30,9 +30,19 @@ export async function generateMetadata({ params }) {
       contentItem.data?.summary ||
       contentItem.data?.description ||
       ''
+    const favicon = settings?.favicon
     return {
       title: `${title} — ${module.name}`,
       description: typeof desc === 'string' ? desc.replace(/<[^>]+>/g, '').slice(0, 160) : '',
+      ...(favicon
+        ? {
+            icons: {
+              icon: [{ url: favicon }, { url: '/favicon.ico' }],
+              shortcut: [favicon],
+              apple: [{ url: favicon }],
+            },
+          }
+        : {}),
     }
   } catch {
     return { title: 'Detail View' }

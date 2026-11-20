@@ -15,23 +15,34 @@ export async function generateMetadata({ params }) {
   if (RESERVED_SLUGS.includes(slug)) return {}
 
   try {
-    const { page, moduleDoc } = await getPublicPageData(slug)
+    const { page, moduleDoc, settings } = await getPublicPageData(slug)
+    const favicon = settings?.favicon
+    const icons = favicon
+      ? {
+          icon: [{ url: favicon }, { url: '/favicon.ico' }],
+          shortcut: [favicon],
+          apple: [{ url: favicon }],
+        }
+      : {}
+
     if (page) {
       return {
-        title: page.seo?.title || `${page.title} — Dynamic CMS`,
+        title: page.seo?.title || `${page.title} — ${settings?.siteName || 'Dynamic CMS'}`,
         description: page.seo?.description || `Visit ${page.title} on our dynamic portal`,
         keywords: page.seo?.keywords || [],
+        icons,
       }
     }
 
     if (moduleDoc) {
       return {
-        title: `${moduleDoc.name} — Dynamic CMS`,
+        title: `${moduleDoc.name} — ${settings?.siteName || 'Dynamic CMS'}`,
         description: moduleDoc.description || `Browse all ${moduleDoc.name} entries`,
+        icons,
       }
     }
 
-    return { title: 'Page Not Found' }
+    return { title: 'Page Not Found', icons }
   } catch {
     return { title: 'Dynamic Page' }
   }

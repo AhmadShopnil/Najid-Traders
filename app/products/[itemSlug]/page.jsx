@@ -64,9 +64,19 @@ export async function generateMetadata({ params }) {
   }
 
   const summary = extractProductSummary(result.contentItem)
+  const favicon = result.settings?.favicon
   return {
     title: `${summary.title} — ${result.settings?.siteName || 'Najid Traders'}`,
     description: summary.description || `${summary.title} imported product details.`,
+    ...(favicon
+      ? {
+          icons: {
+            icon: [{ url: favicon }, { url: '/favicon.ico' }],
+            shortcut: [favicon],
+            apple: [{ url: favicon }],
+          },
+        }
+      : {}),
   }
 }
 

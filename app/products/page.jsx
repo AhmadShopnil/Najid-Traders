@@ -6,10 +6,20 @@ export const revalidate = 60
 
 export async function generateMetadata() {
   const { settings } = await getPublicProductsPageData()
+  const favicon = settings?.favicon
   return {
     title: `Products — ${settings?.siteName || 'Najid Traders'}`,
     description:
       'Browse imported Three-Piece, Sarees, Spices, and China household products from Najid Traders.',
+    ...(favicon
+      ? {
+          icons: {
+            icon: [{ url: favicon }, { url: '/favicon.ico' }],
+            shortcut: [favicon],
+            apple: [{ url: favicon }],
+          },
+        }
+      : {}),
   }
 }
 

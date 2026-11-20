@@ -1,11 +1,27 @@
 import { LoginForm } from '@/components/auth/LoginForm'
 import { getDashboardBranding } from '@/lib/settings/defaults'
+import { getPublicSiteSettings } from '@/lib/public-data'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata() {
-  const branding = await getDashboardBranding()
-  return { title: `Login - ${branding.name || 'CMS'}` }
+  const [branding, settings] = await Promise.all([
+    getDashboardBranding(),
+    getPublicSiteSettings(),
+  ])
+  const favicon = settings?.favicon
+  return {
+    title: `Login - ${branding.name || 'CMS'}`,
+    ...(favicon
+      ? {
+          icons: {
+            icon: [{ url: favicon }, { url: '/favicon.ico' }],
+            shortcut: [favicon],
+            apple: [{ url: favicon }],
+          },
+        }
+      : {}),
+  }
 }
 
 export default async function LoginPage() {
